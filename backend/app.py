@@ -60,28 +60,52 @@ def convert_text():
     original_text = data['text']
     target_audience = data.get('target', 'boss')
     
-    # 타겟별 시스템 프롬프트 설정
+    # 타겟별 시스템 프롬프트 설정 (페르소나 기반 프롬프트 엔지니어링)
     prompts = {
-        "boss": "Convert the following text into a professional, respectful, and formal business tone suitable for reporting to a boss. Use appropriate honorifics (존댓말) and clear, concise language.",
-        "colleague": "Convert the following text into a polite, cooperative, and professional business tone suitable for communicating with a colleague. Use '해요' style but maintain professionalism.",
-        "client": "Convert the following text into a highly formal, service-oriented, and respectful business tone suitable for communicating with an external customer. Use '하십시오' style."
+        "boss": (
+            "You are a professional business communication assistant. "
+            "Convert the user's input into a respectful, formal, and clear business tone suitable for reporting to a supervisor or boss (Upward communication). "
+            "Follow these rules: 1. Use formal honorifics (존댓말, -습니다/하십시오 style). 2. Structure the message logically, starting with the main point. 3. Maintain professional boundaries and use standard business terminology. 4. Do not add any conversational filler before or after the conversion."
+        ),
+        "colleague": (
+            "You are a professional business communication assistant. "
+            "Convert the user's input into a polite, cooperative, and professional business tone suitable for communicating with a colleague or another team (Lateral communication). "
+            "Follow these rules: 1. Use polite honorifics (해요 style). 2. Focus on collaboration and clear requests. 3. Use professional but slightly less rigid language than upward communication. 4. Include clear deadlines or action items if implied. 5. Do not add any conversational filler before or after the conversion."
+        ),
+        "client": (
+            "You are a professional business communication assistant. "
+            "Convert the user's input into a highly formal, service-oriented, and extremely respectful business tone suitable for external clients or customers (External communication). "
+            "Follow these rules: 1. Use the highest level of honorifics (극존칭, -하십시오 style). 2. Emphasize service, gratitude, and professionalism. 3. Ensure the tone is welcoming yet authoritative. 4. Structure as a formal business message (Greeting -> Body -> Closing). 5. Do not add any conversational filler before or after the conversion."
+        )
     }
     
     system_prompt = prompts.get(target_audience, prompts['boss'])
     
+    print(f"--- Conversion Request ---")
+    print(f"Target: {target_audience}")
+    print(f"Original: {original_text}")
+
     try:
-        # Groq API 호출
+        # Groq API 호출 (Moonshot Kimi K2 모델 사용)
         chat_completion = groq_client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": original_text}
+                {"role": "user", "content": f"Please convert this message: {original_text}"}
             ],
-            model="llama-3.3-70b-versatile",
-            temperature=0.7,
-            max_tokens=500,
+            model="moonshotai/kimi-k2-instruct-0905",
+            temperature=0.3, # 일관성 있는 변환을 위해 온도를 낮춤
+            max_tokens=1000,
         )
         
         converted_text = chat_completion.choices[0].message.content.strip()
+        
+        # 따옴표 등으로 감싸져서 반환되는 경우를 대비한 간단한 정제
+        if (converted_text.startswith('"') and converted_text.endswith('"')) or \
+           (converted_text.startswith("'") and converted_text.endswith("'")):
+            converted_text = converted_text[1:-1]
+
+        print(f"Converted: {converted_text}")
+        print(f"--------------------------")
         
         return jsonify({
             "original": original_text,
@@ -90,11 +114,11 @@ def convert_text():
         }), 200
 
     except Exception as e:
-        # 상세한 에러 내용을 서버 터미널에 출력
-        print(f"🔥 Error during Groq API call: {str(e)}")
+        error_msg = f"🔥 Error during Groq API call: {str(e)}"
+        print(error_msg)
         return jsonify({
-            "error": "Failed to process text conversion",
-            "details": str(e)  # 클라이언트에게 에러 원인 전달 (디버깅용)
+            "error": "변환 처리 중 오류가 발생했습니다.",
+            "details": str(e) if app.debug else "Internal Server Error"
         }), 500
 
 if __name__ == '__main__':
