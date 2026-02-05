@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 from groq import Groq
@@ -7,6 +7,7 @@ from groq import Groq
 # 1. 환경 변수 로드
 # 현재 파일(app.py)의 위치를 기준으로 .env 파일을 찾습니다.
 current_dir = os.path.dirname(os.path.abspath(__file__))
+frontend_dir = os.path.join(current_dir, '..', 'frontend')
 env_path = os.path.join(current_dir, '..', '.env')
 load_dotenv(env_path)
 
@@ -26,7 +27,21 @@ else:
 
 groq_client = Groq(api_key=api_key)
 
-@app.route('/', methods=['GET'])
+# --- 정적 파일 서빙 로직 추가 ---
+
+@app.route('/')
+def serve_index():
+    """메인 페이지(index.html) 서빙"""
+    return send_from_directory(frontend_dir, 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    """CSS, JS 등 정적 파일 서빙"""
+    return send_from_directory(frontend_dir, path)
+
+# -----------------------------
+
+@app.route('/health', methods=['GET'])
 def health_check():
     """서버 상태 확인 엔드포인트"""
     return jsonify({"status": "healthy", "service": "BizTone Converter API"}), 200
