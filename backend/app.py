@@ -7,8 +7,10 @@ from groq import Groq
 # 1. 환경 변수 로드
 # 현재 파일(app.py)의 위치를 기준으로 .env 파일을 찾습니다.
 current_dir = os.path.dirname(os.path.abspath(__file__))
-frontend_dir = os.path.join(current_dir, '..', 'frontend')
-env_path = os.path.join(current_dir, '..', '.env')
+# 루트 디렉토리 (backend의 상위)
+root_dir = os.path.dirname(current_dir)
+frontend_dir = os.path.join(root_dir, 'frontend')
+env_path = os.path.join(root_dir, '.env')
 load_dotenv(env_path)
 
 app = Flask(__name__)
@@ -123,4 +125,4 @@ def convert_text():
 
 if __name__ == '__main__':
     # host='0.0.0.0'으로 설정해야 외부(브라우저 등) 접속이 원활합니다.
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='127.0.0.1', port=5000, debug=True)
